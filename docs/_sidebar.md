@@ -1,1 +1,3 @@
-* [主页](README.md)
+- <button id="theme-status" class="theme-status" title="等待中...">正在检查...</button>
+- [笔记扼要](README.md)
+- [opts.host 事务](./opts.host/index.md)
