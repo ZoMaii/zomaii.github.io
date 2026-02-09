@@ -30,6 +30,8 @@
  * 
  * 
  * 特别提醒：书写 markdown 时，不要在元素内嵌套！务必使用 data-ac-role 属性在 markdwon 内进行元素书写！
+ *          如果对于 $$ 或 ``` 的包裹状态已做了提前的预处理。此插件不会处理这部分内容。
+ *          如果本身不支持 Latex 或插件已失效，那么 $(to temp)[@?temp]$ 就会被 Docsify 默认的 marked 引擎正常解析！可能出现意料之外的情况
  * 
  */
 
@@ -51,9 +53,11 @@
     // http://127.0.0.1:5500/#/./opts.host/test
     /** 核心流程处理逻辑
      * 
-     * 1. 预扫描（标记符合 BAN 的行号，求差集得到符合要求的行号）
-     *    a. 流处理（将符合要求的行号转化为 html 元素形式，拼接好全文后交由 marked 处理）
+     * beforeEach > 按行处理，然后查验是否处于封禁名单，最后解析为 view 级别。
+     * doneEach > 全 HTML 文档扫描，针对性构造触发器。
      * 
+     * 
+     * [vscode] md-maic 0.1.x 纯 REGEX 流的行处理方案，不含单字符扫描功能。
      */
 
     const CORE_RULE = {
@@ -67,13 +71,29 @@
       WAY              : /\[([^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*)\]\(\@\?(.*[^\0])\)/g,
     }
 
-    const BAN = [
-        { pattern: /^```[\s\S]*?^```$/gm, type: 'code' },           // 多行代码块
-        { pattern: /^```\w*[\s\S]*?^```$/gm, type: 'code' },       // 带语言的多行代码块
-        { pattern: /`[^`\n]+`/g, type: 'inline' },                 // 行内代码
-        { pattern: /\$\$[\s\S]*?\$\$/g, type: 'math' },            // 多行数学公式
-        { pattern: /\$[^$\n]+\$/g, type: 'inline-math' },          // 行内数学公式
-    ]
+    const BAN = {
+      // $...$ 和 `...` 的单独筛选
+      Latex        : /(?<!\$)\$(?!\$).*?(?<!\$)\$(?!\$)/g,
+      code         : /(?<!`)`(?!`).*?(?<!`)`(?!`)/g,
+      // $$...$$ 和 ```...``` 的筛选
+      Latex_inline : /\$\$(.*)\$\$/g,
+      code_inline  : /```(.*)```/g,
+      // 特殊多位触发器
+      code_multi_A : /```[a-zA-Z0-9!@#$%^&*()_+=\-\\/,.*:;'"[\]{}?]+\r/g,
+      // 多位
+      multi        : ['```','$$'],
+      // 全局重置位，后续若有新增直接在这里填写，方便统一管理
+      resetAll     : function(){
+        BAN.Latex.lastIndex = 0;
+        BAN.Latex_inline.lastIndex = 0;
+        BAN.code.lastIndex = 0;
+        BAN.code_inline.lastIndex = 0;
+        BAN.code_multi_A.lastIndex = 0;
+      }
+    }
+
+    let G_useRoute = false;
+    let isMulti_Start = false;
 
     function makeElement(type=String, data=String, route=Boolean, href=String) {
       switch (type) {
@@ -99,17 +119,45 @@
     }
 
     function useCoreRoute(role=String){
-      const haveRole = Object.keys(vm.route.query).includes('role');
-      const fullQuery = window.location.href.split('?')[1] === undefined ? '' : `?${window.location.href.split('?')[1]}`;
+      // 一次性构造交付方案，需要注意地址栏原有的状态。
+      // role 实时角色，vm.route.query.role 为地址栏角色，vm.route.query.id 为地址栏锚点。
 
-      // A 方案：无法通过地址栏触发 role 查询，只能通过 a 标签元素触发查询。
-      // B 方案：可以通过 地址栏 和 a 标签元素触发查询。
-      const R_A = null  
-      const R_B = haveRole ? `#${vm.route.path}?${fullQuery}` : `#${vm.route.path}?${fullQuery}&role=${role}`
+      // A 方案：未启用地址栏查询功能，不构造 a 的 href 属性。即只能点击 a 元素实现显示功能，不附加到地址栏
+      // B 方案：启用地址栏查询功能，构造 a 的 href 属性。即可以通过 地址栏 和点击 a 标签元素触发查询。
+      const R_A = null 
+      const R_B = `#${vm.route.path}?${vm.route.query.id === undefined ? '' : 'id='+vm.route.query.id+'&'}role=${role}`
       return {R_A, R_B}
     }
 
     function useCoreCOM(line=String,route=false) {
+      // 稽查黑名单是否出现
+      BAN.resetAll();
+      // 步骤一、核验是否属于特殊框架内
+      let B_raw = BAN.multi.includes(line.trim());
+      let B_raw_lang = BAN.code_multi_A.test(line);
+      if(B_raw){
+        isMulti_Start = !isMulti_Start;
+      }
+      if(isMulti_Start === false && B_raw_lang)
+      {
+        isMulti_Start = true;
+      }
+
+      if(isMulti_Start) return { type: null }
+
+      // 步骤二，查验单一/多种情况
+      if 
+      (
+        BAN.Latex.test(line) || 
+        BAN.code.test(line) || 
+        BAN.Latex_inline.test(line) || 
+        BAN.code_inline.test(line)
+      )
+      {
+          return { type: null };
+      }
+
+      // 正常解析
       let mark = CORE_RULE.MARK_ROLE.exec(line);
       let a = CORE_RULE.WAY.exec(line);
 
@@ -159,6 +207,7 @@
         return cache;
       }
 
+      // 清除可能存在的缓存
       a = null;
       mark = null;
       return {
@@ -167,38 +216,25 @@
     }
 
     function useCoreMaker(data=JSON) {
-      switch (data.type) {
-        case 'WAY':
-          let realText = data.text;
-          let rootElement = 'a'
-          // console.log(data);
-          if(data.origin.slice(0,2) === '=='){
-            CORE_RULE.MARK_WAY.lastIndex = 0;
-            realText = CORE_RULE.MARK_WAY.exec(data.origin) !== null
-              ? origin.replace(data.origin_OK, `<a href="${data.href}" data-ac-role="${data.role}">${data.text}</a>`)
-              : origin;
-            rootElement = 'mark';
-          }
-
-          if(rootElement === 'a'){
-            return `<${rootElement}${data.href == null ? '' : ' href='+'"'+ data.href +'"'} role="${data.role}">${realText}</${rootElement}>`
-          }else{
-            return `<${rootElement}>${realText}</${rootElement}>`
-          }
-          break;
-
-        case 'MARK':
-          return `<mark data-ac-remind="${data.role}">${data.text}</mark>`
-          break;
-        
-        case null:
-          return null;
-          break;
-
-        default:
-          return null;
-          break;
+      if(data.type === "WAY")
+      {
+        // 兼容性修复
+        let result = data.origin.replaceAll(data.origin_OK,`<a${data.href === null ? '' : ' href="'+data.href+'"'} data-ac-role="${data.role}">${data.text}</a>`)
+        if(result.slice(0,2) === "=="){
+          CORE_RULE.MARK_WAY.lastIndex = 0;
+          result = CORE_RULE.MARK_WAY.exec(result) === null ? result : result.replace('==','<mark>').replace('==','</mark>');
+        }
+        return result;
       }
+      else if(data.type === "MARK")
+      {
+        return `<mark data-ac-remind="${data.role}">${data.text}</mark>`
+      }
+      else
+      {
+        return null;
+      }
+      return null;
     }
 
     // Docsify 脚本初始化时，执行一次
@@ -214,11 +250,17 @@
     // 每次页面加载时，在新的 Markdown 转换为 HTML 之前执行
     // 支持执行异步任务（可参考 beforeEach 官方文档了解详情）
     hook.beforeEach(function (markdown) {
-      // ...
-      let content = markdown.split('\r\n');
-      const useRoute = content[0] === '<!-- areaclick:Route -->' ? true : false;
+      // [XHR] 不同操作系统文件兼容，CRLF 标准统一化处理。
+      const normalizedMarkdown = markdown.replace(/(?:\r\n|\r|\n)/g, '\r\n'); 
+
+      // 正常逻辑
+      let content = normalizedMarkdown.split('\n');
+      const useRoute = content[0] === '<!-- areaclick:Route -->\r' ? true : false;
+      // 更新全局状态
+      G_useRoute = useRoute;
+      // 创建预备行号，待修改状态
       let i = 0;
-            
+
       for(const line of content){
         // useCoreCOM(line, useRoute)
         // console.log(useCoreCOM(line, useRoute));
@@ -230,7 +272,8 @@
       }
 
       if(Array.isArray(content)){
-        content = content.map(item => item || "").join('\r\n')
+        // 取消 \r 回车符，避免 markdown 解析不一致
+        content = content.map(item => item).join('\n')
       }
 
       return content;
@@ -246,6 +289,40 @@
     // 每次页面加载时，在新的 HTML 追加到 DOM 节点之后执行
     hook.doneEach(function () {
       // ...
+      let allTigger = document.querySelectorAll('a[data-ac-role]');
+      let allMarked = document.querySelectorAll('mark[data-ac-remind]');
+
+      // 核心点击部分，默认装载。
+      allTigger.forEach(element => {
+        element.addEventListener('click',()=>{
+          const role = element.getAttribute('data-ac-role');
+
+          allMarked.forEach(marked => {
+            const remind = marked.getAttribute('data-ac-remind');
+
+            if(role === remind){
+              marked.style.backgroundColor = '#FFFF00';
+            }else{
+              marked.style.backgroundColor = 'initial';
+            }
+          });
+        });
+      });
+      
+      // 发生于 Docsify SPA 应用被整体刷新的情况。
+      // 不重载网页，不向 HTTP服务器 发出跳转请求不生效。
+      if(G_useRoute){
+        // 启用路由
+        let role = vm.route.query.role;
+        document.querySelectorAll('mark[data-ac-remind]').forEach((el)=>{
+          if(el.getAttribute('data-ac-remind') === role){
+            el.style.backgroundColor = '#FFFF00';
+          } else {
+            el.style.backgroundColor = 'initial';
+          }
+        });
+      }
+
     });
 
     // 初始页面渲染完成后，执行一次
