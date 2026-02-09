@@ -1,0 +1,11 @@
+/* 默认在 dark 中已追加淡入淡出功能 */
+
+a[data-ac-role] {
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+mark[data-ac-remind] {
+    background-color: initial;
+    color: inherit;
+}
