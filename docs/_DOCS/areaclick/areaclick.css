@@ -1,4 +1,6 @@
-/* 默认在 dark 中已追加淡入淡出功能 */
+* {
+  transition: color 0.3s ease, background-color 0.3s ease;
+}
 
 a[data-ac-role] {
     text-decoration: underline;

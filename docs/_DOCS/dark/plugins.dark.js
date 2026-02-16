@@ -1,106 +1,173 @@
+// 需要提前引入 BootStrap ICON
+
 (function () {
   var OPTS_HOST_DARK_MOD = function (hook, vm) {
-
+    // 主题切换时段配置（本地时间）
     const TIME_CONFIG = {
-      // 本地时间进行判断，默认 24 Hours
       light: 7,
       dark: 19
     };
 
+    // 主题样式文件
     const THEME_FILES = {
-        light: 'https://cdn.jsdelivr.net/npm/docsify/themes/vue.css',
-        dark: 'https://cdn.jsdelivr.net/npm/docsify/themes/dark.css'
+      light: document.querySelector("link#docsify-theme").href,
+      dark: 'https://cdn.jsdelivr.net/npm/docsify/themes/dark.css'
     };
 
-    const mainTheme = document.getElementById('docsify-theme');
-    let isLight = mainTheme && mainTheme.href.includes('vue.css');
-    let selectBySelf = false;
-    // 避免后续更新出问题
-    let addedListener = false;
+    const THEME_ICON = {
+      light : `<i class="bi bi-brightness-high"></i>`,
+      dark  : `<i class="bi bi-moon"></i>`
+    };
 
+    let themeLink = document.getElementById('docsify-theme');
+    let statusEl = document.getElementById('theme-status');
+    let isLight = themeLink && themeLink.href.includes('vue.css');
+    let manualOverride = false;    // 是否手动切换过
+
+    // 默认毛玻璃背景色（半透明黑）
+    const DEFAULT_BG = 'rgba(0, 0, 0, 0)';
+    // 主题主色：亮色 #42b983，暗色 #ea6f5a
+    const lightColor = '#42b983';
+    const darkColor = '#ea6f5a';
+
+    // 用于管理动画的定时器
+    let flashTimer = null;
+
+    // 根据本地时间获取应使用的主题名
     function getThemeByTime() {
-      // 主题依旧按本地时间计算，而非 UTC 时间。
-        const now = new Date();
-        const currentHour = now.getHours();
-        
-        return (currentHour >= TIME_CONFIG.light && 
-                currentHour < TIME_CONFIG.dark) ? 'light' : 'dark';
+      const hour = new Date().getHours();
+      return (hour >= TIME_CONFIG.light && hour < TIME_CONFIG.dark) ? 'light' : 'dark';
     }
 
-    function getFormatTime(selectDEF = true) {
-        const now = new Date();
-        return selectDEF ? now.toLocaleString() : now.toUTCString();
+    // 格式化时间显示
+    function formatTime(useLocal = true) {
+      const d = new Date();
+      return useLocal ? d.toLocaleString() : d.toUTCString();
     }
 
-    function updateThemeBasedOnTime() {
-      // 由于 Docsify 设计原因，Cookies、localstrong 和 Indexedb 暂不考虑。所有只有短期记忆
-      if(!selectBySelf){  // 单次会话内保持长期记忆
-        const themeName = getThemeByTime();
-        mainTheme.href = THEME_FILES[themeName];
-        isLight = themeName === 'light';
+    // 触发状态栏闪烁动画（使用 CSS 过渡平滑变化）
+    function flashStatus(type) {
+      if (!statusEl) return;
+
+      // 清除之前的定时器，避免冲突
+      if (flashTimer) {
+        clearTimeout(flashTimer);
+        // 立即恢复默认样式（过渡会自动处理）
+        statusEl.style.backgroundColor = DEFAULT_BG;
+        statusEl.style.transform = 'scale(1)';
+      }
+
+      const flashColor = isLight ? lightColor : darkColor;
+      // 手动切换使用纯色，自动切换使用半透明（50% 透明度）
+      const targetColor = (type === 'manual') ? flashColor : (flashColor + '80'); // 80 为 50% 透明度 hex
+
+      statusEl.style.backgroundColor = targetColor;
+      statusEl.style.transform = 'scale(1.05)';
+
+      // 500ms 后恢复默认样式
+      flashTimer = setTimeout(() => {
+        statusEl.style.backgroundColor = DEFAULT_BG;
+        statusEl.style.transform = 'scale(1)';
+        flashTimer = null;
+      }, 500);
+    }
+
+    // 自动更新主题（仅在未手动覆盖时）
+    function autoUpdateTheme() {
+      if (manualOverride || !themeLink) return;
+      const targetTheme = getThemeByTime();
+      const newHref = THEME_FILES[targetTheme];
+      if (themeLink.href !== newHref) {
+        themeLink.href = newHref;
+        isLight = (targetTheme === 'light');
+        flashStatus('auto');
       }
     }
 
-    function toggleTheme(){
-        const newTheme = isLight ? 'dark' : 'light';
-        mainTheme.href = THEME_FILES[newTheme];
-        isLight = !isLight;
-        selectBySelf = true;
+    // 手动切换主题
+    function toggleTheme() {
+      if (!themeLink) return;
+      const newTheme = isLight ? 'dark' : 'light';
+      themeLink.href = THEME_FILES[newTheme];
+      isLight = !isLight;
+      manualOverride = true;
+      flashStatus('manual');
+      updateStatusDisplay(); // 立即更新状态栏显示
     }
 
-    function updataStatus(){
-      const mainElement = document.getElementById('theme-status');
-      const themeName = getThemeByTime();
-      // console.log(mainElement);
-
-      mainElement.innerText = `\u23F0[${themeName} theme] ${getFormatTime(false)}`;
-      mainElement.setAttribute('title', 
-          `当前时间大约为：${getFormatTime()} \n点击以切换主题 | 本次会话内长期保存。`);
-      
-      updateThemeBasedOnTime();
-      
-      if(!addedListener) {
-        mainElement.addEventListener('click',toggleTheme);
-        addedListener = true;
+    // 更新状态栏显示（根据屏幕宽度调整文本，使用实际主题）
+    function updateStatusDisplay() {
+      if (!statusEl) return;
+      const currentTheme = isLight ? 'light' : 'dark';
+      let text;
+      if (window.innerWidth <= 425) {
+        text = THEME_ICON[currentTheme];
+      } else {
+        text = `<i class="bi bi-alarm"></i>  ${formatTime(false)} | ${currentTheme}`;
       }
+
+      statusEl.innerHTML = text;
+      statusEl.setAttribute(
+        'title',
+        `当前本地时间：${formatTime(true)}\n点击切换主题（本次会话内有效）`
+      );
+
+      if (!manualOverride) autoUpdateTheme();
     }
 
-    hook.init(function() {
-        // 初始化完成后调用，只调用一次，没有参数。
-    });
+    // 定时器：每秒刷新显示（主要用于更新时间，并检查自动切换）
+    function tick() {
+      updateStatusDisplay();
+    }
 
-    hook.beforeEach(function(content) {
-      // 每次开始解析 Markdown 内容时调用
-      // ...
-      return content;
-    });
+    // 确保状态元素存在（若不存在则自动创建）
+    function ensureStatusElement() {
+      if (statusEl) return statusEl;
+      statusEl = document.createElement('div');
+      statusEl.id = 'theme-status';
+      // 增强毛玻璃样式
+      statusEl.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: ${DEFAULT_BG};
+        padding: 8px 14px;
+        border-radius: 30px;
+        font-size: 14px;
+        cursor: pointer;
+        z-index: 9999;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+      `;
+      document.body.appendChild(statusEl);
+      return statusEl;
+    }
 
-    hook.afterEach(function(html, next) {
-      // 解析成 html 后调用。
-      // beforeEach 和 afterEach 支持处理异步逻辑
-      // ...
-      // 异步处理完成后调用 next(html) 返回结果
-      next(html);
-    });
+    // 插件初始化（仅执行一次）
+    function initPlugin() {
+      themeLink = document.getElementById('docsify-theme');
+      if (!themeLink) {
+        console.warn('docsify-darkmod-plugin: 未找到 id="docsify-theme" 的 link 元素，主题切换功能不可用。');
+        return;
+      }
 
-    hook.doneEach(function() {
-      // 每次路由切换时数据全部加载完成后调用，没有参数。
-      // ...
-      updataStatus();
-      // 设置监听
-      const d = setInterval(updataStatus,1000);
-    });
+      statusEl = ensureStatusElement();
 
-    hook.mounted(function() {
-      // 初始化并第一次加载完成数据后调用，只触发一次，没有参数。
-    });
+      isLight = themeLink.href.includes('vue.css');
+      statusEl.addEventListener('click', toggleTheme);
 
-    hook.ready(function() {
-      // 初始化并第一次加载完成数据后调用，没有参数。
-    });
+      window.addEventListener('resize', updateStatusDisplay);
+
+      setInterval(tick, 1000);        // 启动秒级刷新
+      updateStatusDisplay();           // 立即更新显示
+    }
+
+    hook.mounted(initPlugin);
   };
 
-  // Add plugin to docsify's plugin array
   $docsify = $docsify || {};
   $docsify.plugins = [].concat(OPTS_HOST_DARK_MOD, $docsify.plugins || []);
 })();

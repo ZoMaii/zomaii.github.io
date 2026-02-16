@@ -4,21 +4,22 @@
   <meta charset="UTF-8">
   <title>笔记文档 | opts.host</title>
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
-  <meta name="description" content="Description">
+  <meta name="description" content="This is a site.">
   <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+  
+  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
 
   <!-- 配色主题 -->
   <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify/themes/vue.css" id="docsify-theme">
-  <link rel="preload" href="https://cdn.jsdelivr.net/npm/docsify/themes/dark.css" as="style">
-  <link rel="stylesheet" href="_DOCS/dark/dark.css">
-
+  <link rel="preload" href="//cdn.jsdelivr.net/npm/docsify/themes/dark.css" as="style">
+  
   <!-- BootStrap ICON -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
 
   <!-- 区域标记 -->
   <link rel="stylesheet" href="./_DOCS/areaclick/areaclick.css">
 
-  <!-- mermaid 暂不支持 -->
 </head>
 <body>
   <noscript>如果你看到这条信息，说明你没有启用 JavaScript 或者处于某种安全模式导致问题出现</noscript>
@@ -39,8 +40,8 @@
           var footer = [
             '<hr/>',
             '<footer>',
-            `<span>&copy; ${new Date().getFullYear().toString()} <a href="https://github.com/ZoMaii">ZoMaii</a>.</span>`,
-            '<span>Report issues on <a href="https://github.com/ZoMaii/zomaii.github.io" target="_blank">GitHub</a>.</span>',
+            `<span>&copy; ${new Date().getFullYear().toString()} <a href="//github.com/ZoMaii">ZoMaii</a>.</span>`,
+            '<span>Report issues on <a href="//github.com/ZoMaii/zomaii.github.io" target="_blank">GitHub</a>.</span>',
             '</footer>',
           ].join('');
 
@@ -52,19 +53,32 @@
     }
   </script>
   <!-- docsify 引入 -->
-  <script src="https://cdn.jsdelivr.net/npm/docsify/lib/docsify.min.js"></script>
-  <!-- 导航栏搜索功能 -->
-  <script src="https://cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>
-  <!-- 图片缩放 -->
-  <script src="https://cdn.jsdelivr.net/npm/docsify/lib/plugins/zoom-image.min.js"></script>
-  <!-- 字数统计 -->
-  <script src="https://cdn.jsdelivr.net/npm/docsify-count/dist/countable.min.js"></script>
-  <!-- 代码系列 -->
-  <script src="https://cdn.jsdelivr.net/npm/prismjs/plugins/line-numbers/prism-line-numbers.min.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs/plugins/line-numbers/prism-line-numbers.css">
+  <script src="//cdn.jsdelivr.net/npm/docsify/lib/docsify.min.js"></script>
 
-  <!-- https://github.com/fzankl/docsify-plugin-flexible-alerts --> 
-  <script src="https://unpkg.com/docsify-plugin-flexible-alerts"></script>
+  <!-- 导航栏搜索功能 -->
+  <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>
+  <!-- 图片缩放 -->
+  <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/zoom-image.min.js"></script>
+  <!-- 字数统计 -->
+  <script src="//cdn.jsdelivr.net/npm/docsify-count/dist/countable.min.js"></script>
+
+  <!-- mermaid 系列 -->
+  <!-- ES6 mjs 待评估 -->
+  <!-- <script type="module">
+    import mermaid from "//cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true });
+    window.mermaid = mermaid;
+  </script>
+  <script src="//unpkg.com/docsify-mermaid@2.0.1/dist/docsify-mermaid.js"></script> -->
+
+  <!-- Latex / Katex -->
+  <!-- <script src="//cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.js"></script>
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.css" />
+  <script src="//cdn.jsdelivr.net/npm/marked@4"></script>
+  <script src="//cdn.jsdelivr.net/npm/docsify-katex@latest/dist/docsify-katex.js"></script> -->
+
+  <!-- //github.com/fzankl/docsify-plugin-flexible-alerts --> 
+  <script src="//unpkg.com/docsify-plugin-flexible-alerts"></script>
 
   <!-- 主题 -->
   <script src="_DOCS/dark/plugins.dark.js"></script>
